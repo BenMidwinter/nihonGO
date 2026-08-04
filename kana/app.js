@@ -439,17 +439,10 @@
       els.missedItems.innerHTML = "";
       record.misses.forEach((m) => {
         const li = document.createElement("li");
-        const showGiven =
-          record.mode === "kana-to-romaji" || record.difficulty === "hard"
-            ? m.given
-            : m.given;
-        const right =
-          record.mode === "romaji-to-kana" && record.difficulty === "hard"
-            ? m.char
-            : m.romaji;
+        const right = record.mode === "romaji-to-kana" ? m.char : m.romaji;
         li.innerHTML = `
           <span class="kana">${m.char}</span>
-          <span><span class="wrong">${showGiven}</span><span class="right">${right}</span></span>
+          <span><span class="wrong">${m.given}</span><span class="right">${right}</span></span>
         `;
         els.missedItems.appendChild(li);
       });
