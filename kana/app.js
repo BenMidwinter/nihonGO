@@ -1,327 +1,396 @@
-const SESSION_KEY = "nihongo-kana-session";
+(() => {
+  const STORAGE_KEY = "kana-drill-session-v1";
 
-const els = {
-  setup: document.getElementById("screen-setup"),
-  play: document.getElementById("screen-play"),
-  results: document.getElementById("screen-results"),
-  form: document.getElementById("setup-form"),
-  sessionPanel: document.getElementById("session-panel"),
-  roundHistory: document.getElementById("round-history"),
-  sessionSummary: document.getElementById("session-summary"),
-  clearSession: document.getElementById("btn-clear-session"),
-  quit: document.getElementById("btn-quit"),
-  progressLabel: document.getElementById("progress-label"),
-  liveScore: document.getElementById("live-score"),
-  progressFill: document.getElementById("progress-fill"),
-  promptLabel: document.getElementById("prompt-label"),
-  prompt: document.getElementById("prompt"),
-  scriptHint: document.getElementById("script-hint"),
-  choices: document.getElementById("choices"),
-  feedback: document.getElementById("feedback"),
-  feedbackVerdict: document.getElementById("feedback-verdict"),
-  feedbackDetail: document.getElementById("feedback-detail"),
-  next: document.getElementById("btn-next"),
-  resultsTitle: document.getElementById("results-title"),
-  resultsScore: document.getElementById("results-score"),
-  resultsPct: document.getElementById("results-pct"),
-  missedList: document.getElementById("missed-list"),
-  missedItems: document.getElementById("missed-items"),
-  resultsHistory: document.getElementById("results-history"),
-  again: document.getElementById("btn-again"),
-  home: document.getElementById("btn-home"),
-};
-
-let state = {
-  settings: null,
-  deck: [],
-  index: 0,
-  correct: 0,
-  misses: [],
-  answered: false,
-};
-
-function loadSession() {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    return raw ? JSON.parse(raw) : { rounds: [] };
-  } catch {
-    return { rounds: [] };
-  }
-}
-
-function saveSession(session) {
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-}
-
-function showScreen(name) {
-  for (const key of ["setup", "play", "results"]) {
-    const el = els[key];
-    const active = key === name;
-    el.classList.toggle("active", active);
-    el.hidden = !active;
-  }
-}
-
-function shuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-function uniqueBy(arr, keyFn) {
-  const seen = new Set();
-  return arr.filter((item) => {
-    const k = keyFn(item);
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
-}
-
-function renderSessionHistory() {
-  const session = loadSession();
-  const rounds = session.rounds || [];
-  const hasRounds = rounds.length > 0;
-
-  els.sessionPanel.classList.toggle("hidden", !hasRounds);
-  els.roundHistory.innerHTML = "";
-  els.resultsHistory.innerHTML = "";
-
-  rounds
-    .slice()
-    .reverse()
-    .forEach((r, i) => {
-      const label = `Round ${rounds.length - i}`;
-      const detail = `${r.correct}/${r.total} · ${r.mode === "kana-to-romaji" ? "kana→romaji" : "romaji→kana"}`;
-      const li = document.createElement("li");
-      li.innerHTML = `<span>${label}<br><small style="opacity:.7">${detail}</small></span><span class="score">${Math.round((r.correct / r.total) * 100)}%</span>`;
-      els.roundHistory.appendChild(li.cloneNode(true));
-      els.resultsHistory.appendChild(li);
-    });
-
-  if (hasRounds) {
-    const totalCorrect = rounds.reduce((s, r) => s + r.correct, 0);
-    const totalCards = rounds.reduce((s, r) => s + r.total, 0);
-    els.sessionSummary.textContent = `${rounds.length} round${rounds.length === 1 ? "" : "s"} · ${totalCorrect}/${totalCards} cards correct (${Math.round((totalCorrect / totalCards) * 100)}%)`;
-  } else {
-    els.sessionSummary.textContent = "";
-  }
-}
-
-function readSettings() {
-  const form = els.form;
-  const scripts = [...form.querySelectorAll('input[name="script"]:checked')].map((el) => el.value);
-  const scope = form.querySelector('input[name="scope"]:checked').value;
-  const mode = form.querySelector('input[name="mode"]:checked').value;
-  const roundSize = Number(form.querySelector('input[name="roundSize"]:checked').value);
-  return { scripts, scope, mode, roundSize };
-}
-
-function startRound(settings) {
-  if (!settings.scripts.length) {
-    alert("Pick at least one script (hiragana or katakana).");
-    return;
-  }
-
-  const pool = buildDeck(settings);
-  if (!pool.length) {
-    alert("No cards match that range — try a wider scope.");
-    return;
-  }
-
-  const deck = shuffle(pool).slice(0, Math.min(settings.roundSize, pool.length));
-  state = {
-    settings,
-    deck,
-    index: 0,
-    correct: 0,
-    misses: [],
-    answered: false,
+  const screens = {
+    setup: document.getElementById("screen-setup"),
+    play: document.getElementById("screen-play"),
+    results: document.getElementById("screen-results"),
   };
 
-  showScreen("play");
-  renderCard();
-}
+  const els = {
+    form: document.getElementById("setup-form"),
+    sessionPanel: document.getElementById("session-panel"),
+    roundHistory: document.getElementById("round-history"),
+    sessionSummary: document.getElementById("session-summary"),
+    clearSession: document.getElementById("btn-clear-session"),
+    quit: document.getElementById("btn-quit"),
+    progressLabel: document.getElementById("progress-label"),
+    liveScore: document.getElementById("live-score"),
+    progressFill: document.getElementById("progress-fill"),
+    promptLabel: document.getElementById("prompt-label"),
+    prompt: document.getElementById("prompt"),
+    scriptHint: document.getElementById("script-hint"),
+    choices: document.getElementById("choices"),
+    feedback: document.getElementById("feedback"),
+    feedbackVerdict: document.getElementById("feedback-verdict"),
+    feedbackDetail: document.getElementById("feedback-detail"),
+    next: document.getElementById("btn-next"),
+    resultsTitle: document.getElementById("results-title"),
+    resultsScore: document.getElementById("results-score"),
+    resultsPct: document.getElementById("results-pct"),
+    missedList: document.getElementById("missed-list"),
+    missedItems: document.getElementById("missed-items"),
+    resultsHistory: document.getElementById("results-history"),
+    again: document.getElementById("btn-again"),
+    home: document.getElementById("btn-home"),
+  };
 
-function currentCard() {
-  return state.deck[state.index];
-}
+  /** @type {{ rounds: Array<object>, settings: object|null }} */
+  let session = loadSession();
 
-function distractors(card, mode) {
-  const pool = buildDeck(state.settings).filter((k) => {
-    if (mode === "kana-to-romaji") return k.romaji !== card.romaji;
-    return k.char !== card.char;
-  });
+  /** @type {object|null} */
+  let round = null;
 
-  const sameScript = pool.filter((k) => k.script === card.script);
-  const source = sameScript.length >= 3 ? sameScript : pool;
-  const keyed =
-    mode === "kana-to-romaji"
-      ? uniqueBy(shuffle(source), (k) => k.romaji)
-      : uniqueBy(shuffle(source), (k) => k.char);
-
-  return keyed.slice(0, 3);
-}
-
-function renderCard() {
-  const card = currentCard();
-  const mode = state.settings.mode;
-  const n = state.deck.length;
-  const i = state.index;
-
-  state.answered = false;
-  els.feedback.classList.add("hidden");
-  els.feedback.classList.remove("is-correct", "is-wrong");
-  els.choices.innerHTML = "";
-
-  els.progressLabel.textContent = `${i + 1} / ${n}`;
-  els.liveScore.textContent = `${state.correct} correct`;
-  els.progressFill.style.width = `${(i / n) * 100}%`;
-
-  if (mode === "kana-to-romaji") {
-    els.promptLabel.textContent = "Read this kana";
-    els.prompt.textContent = card.char;
-    els.prompt.classList.remove("romaji-prompt");
-    els.scriptHint.textContent = card.script;
-  } else {
-    els.promptLabel.textContent = "Pick the kana";
-    els.prompt.textContent = card.romaji;
-    els.prompt.classList.add("romaji-prompt");
-    els.scriptHint.textContent = card.script;
+  function loadSession() {
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (!raw) return { rounds: [], settings: null };
+      const parsed = JSON.parse(raw);
+      return {
+        rounds: Array.isArray(parsed.rounds) ? parsed.rounds : [],
+        settings: parsed.settings || null,
+      };
+    } catch {
+      return { rounds: [], settings: null };
+    }
   }
 
-  const options = shuffle([card, ...distractors(card, mode)]);
-  for (const opt of options) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "choice" + (mode === "romaji-to-kana" ? " kana-choice" : "");
-    btn.textContent = mode === "kana-to-romaji" ? opt.romaji : opt.char;
-    btn.addEventListener("click", () => onAnswer(btn, opt, card));
-    els.choices.appendChild(btn);
+  function saveSession() {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
   }
-}
 
-function onAnswer(btn, chosen, card) {
-  if (state.answered) return;
-  state.answered = true;
+  function showScreen(name) {
+    Object.entries(screens).forEach(([key, el]) => {
+      const active = key === name;
+      el.classList.toggle("active", active);
+      el.hidden = !active;
+    });
+    window.scrollTo(0, 0);
+  }
 
-  const mode = state.settings.mode;
-  const isCorrect =
-    mode === "kana-to-romaji" ? chosen.romaji === card.romaji : chosen.char === card.char;
+  function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
 
-  if (isCorrect) state.correct += 1;
-  else {
-    state.misses.push({
-      char: card.char,
-      romaji: card.romaji,
-      script: card.script,
-      picked: mode === "kana-to-romaji" ? chosen.romaji : chosen.char,
+  function uniqueBy(arr, keyFn) {
+    const seen = new Set();
+    return arr.filter((item) => {
+      const k = keyFn(item);
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
     });
   }
 
-  els.liveScore.textContent = `${state.correct} correct`;
-  els.progressFill.style.width = `${((state.index + 1) / state.deck.length) * 100}%`;
-
-  for (const choice of els.choices.querySelectorAll(".choice")) {
-    choice.disabled = true;
-    const value = choice.textContent;
-    const isRight =
-      mode === "kana-to-romaji" ? value === card.romaji : value === card.char;
-    if (isRight) choice.classList.add("correct");
-    else if (choice === btn && !isCorrect) choice.classList.add("wrong");
-    else choice.classList.add("dim");
+  function pickDistractors(correct, deck, mode, count = 3) {
+    const key = mode === "kana-to-romaji" ? "romaji" : "char";
+    const correctVal = correct[key];
+    const pool = uniqueBy(
+      shuffle(deck.filter((k) => k[key] !== correctVal)),
+      (k) => k[key]
+    );
+    return pool.slice(0, count);
   }
 
-  els.feedback.classList.remove("hidden", "is-correct", "is-wrong");
-  els.feedback.classList.add(isCorrect ? "is-correct" : "is-wrong");
-  els.feedbackVerdict.textContent = isCorrect ? "Correct" : "Not quite";
-  els.feedbackDetail.innerHTML = isCorrect
-    ? `<strong>${card.char}</strong> = ${card.romaji}`
-    : `Answer: <strong>${card.char}</strong> = ${card.romaji}`;
+  function readSettingsFromForm() {
+    const scripts = [...els.form.querySelectorAll('input[name="script"]:checked')].map(
+      (el) => el.value
+    );
+    const scope = els.form.querySelector('input[name="scope"]:checked').value;
+    const mode = els.form.querySelector('input[name="mode"]:checked').value;
+    const roundSize = Number(els.form.querySelector('input[name="roundSize"]:checked').value);
+    return { scripts, scope, mode, roundSize };
+  }
 
-  els.next.textContent = state.index + 1 >= state.deck.length ? "See results" : "Next";
-}
+  function applySettingsToForm(settings) {
+    if (!settings) return;
+    els.form.querySelectorAll('input[name="script"]').forEach((el) => {
+      el.checked = settings.scripts.includes(el.value);
+    });
+    const scope = els.form.querySelector(`input[name="scope"][value="${settings.scope}"]`);
+    if (scope) scope.checked = true;
+    const mode = els.form.querySelector(`input[name="mode"][value="${settings.mode}"]`);
+    if (mode) mode.checked = true;
+    const size = els.form.querySelector(`input[name="roundSize"][value="${settings.roundSize}"]`);
+    if (size) size.checked = true;
+  }
 
-function finishRound() {
-  const total = state.deck.length;
-  const { correct, misses, settings } = state;
-  const session = loadSession();
-  session.rounds.push({
-    correct,
-    total,
-    mode: settings.mode,
-    scripts: settings.scripts,
-    scope: settings.scope,
-    at: Date.now(),
-  });
-  saveSession(session);
+  function formatScripts(scripts) {
+    return scripts
+      .map((s) => (s === "hiragana" ? "ひらがな" : "カタカナ"))
+      .join(" · ");
+  }
 
-  const pct = total ? Math.round((correct / total) * 100) : 0;
-  els.resultsTitle.textContent = pct === 100 ? "Perfect round!" : "Round complete";
-  els.resultsScore.textContent = `${correct} / ${total}`;
-  els.resultsPct.textContent = `${pct}% correct`;
+  function renderHistory(target) {
+    target.innerHTML = "";
+    if (!session.rounds.length) return;
 
-  if (misses.length) {
-    els.missedList.classList.remove("hidden");
-    els.missedItems.innerHTML = "";
-    for (const m of misses) {
+    session.rounds.forEach((r, i) => {
       const li = document.createElement("li");
-      li.innerHTML = `<span class="kana">${m.char}</span><span><span class="wrong">${m.picked}</span><span class="right">${m.romaji}</span></span>`;
-      els.missedItems.appendChild(li);
+      const pct = Math.round((r.correct / r.total) * 100);
+      li.innerHTML = `
+        <span>Round ${i + 1} · ${formatScripts(r.scripts)} · ${r.total} cards</span>
+        <span class="score">${r.correct}/${r.total} (${pct}%)</span>
+      `;
+      target.appendChild(li);
+    });
+  }
+
+  function updateSessionUI() {
+    const hasRounds = session.rounds.length > 0;
+    els.sessionPanel.classList.toggle("hidden", !hasRounds);
+    renderHistory(els.roundHistory);
+    renderHistory(els.resultsHistory);
+
+    if (hasRounds) {
+      const totalCorrect = session.rounds.reduce((s, r) => s + r.correct, 0);
+      const totalCards = session.rounds.reduce((s, r) => s + r.total, 0);
+      const best = Math.max(...session.rounds.map((r) => r.correct / r.total));
+      els.sessionSummary.textContent = `${session.rounds.length} round${
+        session.rounds.length === 1 ? "" : "s"
+      } · ${totalCorrect}/${totalCards} overall · best ${Math.round(best * 100)}%`;
+    } else {
+      els.sessionSummary.textContent = "";
     }
-  } else {
-    els.missedList.classList.add("hidden");
-    els.missedItems.innerHTML = "";
   }
 
-  renderSessionHistory();
-  showScreen("results");
-}
+  function startRound(settings) {
+    const deck = buildDeck(settings);
+    if (deck.length < 4) {
+      alert("Not enough kana for that selection. Pick at least one script.");
+      return;
+    }
+    if (!settings.scripts.length) {
+      alert("Choose hiragana, katakana, or both.");
+      return;
+    }
 
-els.form.addEventListener("submit", (e) => {
-  e.preventDefault();
-  startRound(readSettings());
-});
+    session.settings = settings;
+    saveSession();
 
-els.quit.addEventListener("click", () => {
-  const answeredCount = state.answered ? state.index + 1 : state.index;
-  if (answeredCount === 0) {
-    showScreen("setup");
-    return;
-  }
-  if (confirm("End this round early? Progress so far will be saved.")) {
-    state.deck = state.deck.slice(0, answeredCount);
-    finishRound();
-  }
-});
+    const size = Math.min(settings.roundSize, deck.length);
+    const cards = shuffle(deck).slice(0, size);
 
-els.next.addEventListener("click", () => {
-  if (state.index + 1 >= state.deck.length) finishRound();
-  else {
-    state.index += 1;
+    round = {
+      settings,
+      cards,
+      index: 0,
+      correct: 0,
+      answered: false,
+      misses: [],
+      startedAt: Date.now(),
+    };
+
+    showScreen("play");
     renderCard();
   }
-});
 
-els.again.addEventListener("click", () => startRound(state.settings || readSettings()));
-els.home.addEventListener("click", () => {
-  renderSessionHistory();
-  showScreen("setup");
-});
+  function renderCard() {
+    const { cards, index, settings, correct } = round;
+    const card = cards[index];
+    const mode = settings.mode;
 
-els.clearSession.addEventListener("click", () => {
-  if (confirm("Clear all session rounds?")) {
-    saveSession({ rounds: [] });
-    renderSessionHistory();
+    els.progressLabel.textContent = `${index + 1} / ${cards.length}`;
+    els.liveScore.textContent = `${correct} correct`;
+    els.progressFill.style.width = `${(index / cards.length) * 100}%`;
+
+    els.feedback.classList.add("hidden");
+    els.feedback.classList.remove("is-correct", "is-wrong");
+    round.answered = false;
+
+    const stage = document.querySelector(".card-stage");
+    stage.style.animation = "none";
+    void stage.offsetWidth;
+    stage.style.animation = "";
+
+    if (mode === "kana-to-romaji") {
+      els.promptLabel.textContent = "Read this kana";
+      els.prompt.textContent = card.char;
+      els.prompt.classList.remove("romaji-prompt");
+      els.scriptHint.textContent = card.script;
+    } else {
+      els.promptLabel.textContent = "Which kana is this?";
+      els.prompt.textContent = card.romaji;
+      els.prompt.classList.add("romaji-prompt");
+      els.scriptHint.textContent = card.script;
+    }
+
+    const distractors = pickDistractors(card, round.cards.length >= 4 ? buildDeck(settings) : round.cards, mode);
+    const options = shuffle([card, ...distractors]);
+
+    els.choices.innerHTML = "";
+    options.forEach((opt) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "choice" + (mode === "romaji-to-kana" ? " kana-choice" : "");
+      btn.textContent = mode === "kana-to-romaji" ? opt.romaji : opt.char;
+      btn.dataset.romaji = opt.romaji;
+      btn.dataset.char = opt.char;
+      btn.addEventListener("click", () => onAnswer(btn, opt));
+      els.choices.appendChild(btn);
+    });
   }
-});
 
-renderSessionHistory();
-showScreen("setup");
+  function onAnswer(button, chosen) {
+    if (!round || round.answered) return;
+    round.answered = true;
 
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js").catch(() => {});
-}
+    const card = round.cards[round.index];
+    const mode = round.settings.mode;
+    const isCorrect =
+      mode === "kana-to-romaji"
+        ? chosen.romaji === card.romaji
+        : chosen.char === card.char;
+
+    const buttons = [...els.choices.querySelectorAll(".choice")];
+    buttons.forEach((btn) => {
+      btn.disabled = true;
+      const match =
+        mode === "kana-to-romaji"
+          ? btn.dataset.romaji === card.romaji
+          : btn.dataset.char === card.char;
+      if (match) btn.classList.add("correct");
+      else if (btn === button && !isCorrect) btn.classList.add("wrong");
+      else btn.classList.add("dim");
+    });
+
+    els.feedback.classList.remove("hidden");
+    if (isCorrect) {
+      round.correct += 1;
+      els.feedback.classList.add("is-correct");
+      els.feedbackVerdict.textContent = "Correct";
+      els.feedbackDetail.innerHTML =
+        mode === "kana-to-romaji"
+          ? `<strong>${card.char}</strong> is <strong>${card.romaji}</strong>`
+          : `<strong>${card.romaji}</strong> is <strong>${card.char}</strong>`;
+    } else {
+      const yourAnswer = mode === "kana-to-romaji" ? chosen.romaji : chosen.char;
+      round.misses.push({
+        char: card.char,
+        romaji: card.romaji,
+        script: card.script,
+        given: yourAnswer,
+      });
+      els.feedback.classList.add("is-wrong");
+      els.feedbackVerdict.textContent = "Not quite";
+      els.feedbackDetail.innerHTML =
+        mode === "kana-to-romaji"
+          ? `You chose <strong>${yourAnswer}</strong>. <strong>${card.char}</strong> is <strong>${card.romaji}</strong>.`
+          : `You chose <strong>${yourAnswer}</strong>. <strong>${card.romaji}</strong> is <strong>${card.char}</strong>.`;
+    }
+
+    els.liveScore.textContent = `${round.correct} correct`;
+    els.progressFill.style.width = `${((round.index + 1) / round.cards.length) * 100}%`;
+
+    const isLast = round.index >= round.cards.length - 1;
+    els.next.textContent = isLast ? "See results" : "Next";
+    els.next.focus();
+  }
+
+  function finishRound({ abandoned = false } = {}) {
+    if (!round) return;
+
+    let correct = round.correct;
+    let totalScored = round.cards.length;
+    if (abandoned) {
+      // Only count cards the player actually answered
+      totalScored = round.index + (round.answered ? 1 : 0);
+      if (totalScored === 0) {
+        round = null;
+        showScreen("setup");
+        updateSessionUI();
+        return;
+      }
+    }
+
+    const record = {
+      correct,
+      total: totalScored,
+      scripts: round.settings.scripts,
+      scope: round.settings.scope,
+      mode: round.settings.mode,
+      misses: round.misses,
+      abandoned,
+      at: new Date().toISOString(),
+    };
+
+    session.rounds.push(record);
+    saveSession();
+
+    els.resultsTitle.textContent = abandoned ? "Round ended early" : "Round complete";
+    els.resultsScore.textContent = `${record.correct} / ${record.total}`;
+    const pct = Math.round((record.correct / record.total) * 100);
+    els.resultsPct.textContent = `${pct}% · ${formatScripts(record.scripts)}`;
+
+    if (record.misses.length) {
+      els.missedList.classList.remove("hidden");
+      els.missedItems.innerHTML = "";
+      record.misses.forEach((m) => {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <span class="kana">${m.char}</span>
+          <span><span class="fix">${m.given}</span><span class="right">${m.romaji}</span></span>
+        `;
+        els.missedItems.appendChild(li);
+      });
+    } else {
+      els.missedList.classList.add("hidden");
+      els.missedItems.innerHTML = "";
+    }
+
+    updateSessionUI();
+    round = null;
+    showScreen("results");
+  }
+
+  function nextCard() {
+    if (!round) return;
+    if (round.index >= round.cards.length - 1) {
+      finishRound();
+      return;
+    }
+    round.index += 1;
+    renderCard();
+  }
+
+  // Events
+  els.form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const settings = readSettingsFromForm();
+    startRound(settings);
+  });
+
+  els.next.addEventListener("click", nextCard);
+  els.quit.addEventListener("click", () => finishRound({ abandoned: true }));
+
+  els.again.addEventListener("click", () => {
+    const settings = session.settings || readSettingsFromForm();
+    startRound(settings);
+  });
+
+  els.home.addEventListener("click", () => {
+    applySettingsToForm(session.settings);
+    updateSessionUI();
+    showScreen("setup");
+  });
+
+  els.clearSession.addEventListener("click", () => {
+    session.rounds = [];
+    saveSession();
+    updateSessionUI();
+  });
+
+  // Restore settings from last session
+  applySettingsToForm(session.settings);
+  updateSessionUI();
+  showScreen("setup");
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  }
+})();
