@@ -1,14 +1,10 @@
 # nihonGO!
 
-Mobile practice hub for Japanese drills. Static site — works on GitHub Pages.
+Mobile practice hub for Japanese drills.
 
-## Live site
+**Live:** https://benmidwinter.github.io/nihonGO/
 
-After Pages is enabled:
-
-`https://benmidwinter.github.io/nihonGO/`
-
-Add that URL to your Home Screen.
+Add that URL to your Home Screen for quick access on your phone.
 
 ## Apps
 
@@ -25,9 +21,3 @@ python3 -m http.server 8765
 ```
 
 Open `http://localhost:8765`.
-
-## Enable GitHub Pages
-
-1. Repo **Settings → Pages**
-2. Source: **GitHub Actions**
-3. Save — the deploy workflow publishes on every push to `main`
