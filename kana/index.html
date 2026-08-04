@@ -45,8 +45,14 @@
 
         <fieldset>
           <legend>Mode</legend>
-          <label class="radio"><input type="radio" name="mode" value="kana-to-romaji" checked /> See kana → pick romaji</label>
-          <label class="radio"><input type="radio" name="mode" value="romaji-to-kana" /> See romaji → pick kana</label>
+          <label class="radio"><input type="radio" name="mode" value="kana-to-romaji" checked /> See kana → answer romaji</label>
+          <label class="radio"><input type="radio" name="mode" value="romaji-to-kana" /> See romaji → answer kana</label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Difficulty</legend>
+          <label class="radio"><input type="radio" name="difficulty" value="choice" checked /> Multiple choice</label>
+          <label class="radio"><input type="radio" name="difficulty" value="hard" /> Hard — type the answer</label>
         </fieldset>
 
         <fieldset>
@@ -87,6 +93,12 @@
       </div>
 
       <div id="choices" class="choices" role="group" aria-label="Answer choices"></div>
+
+      <form id="type-form" class="type-form hidden" autocomplete="off">
+        <label class="type-label" for="type-input">Your answer</label>
+        <input id="type-input" class="type-input" name="answer" type="text" enterkeyhint="done" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" />
+        <button type="submit" class="btn primary" id="btn-check">Check</button>
+      </form>
 
       <div id="feedback" class="feedback hidden" aria-live="assertive">
         <p id="feedback-verdict" class="feedback-verdict"></p>

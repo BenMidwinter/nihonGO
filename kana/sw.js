@@ -1,4 +1,4 @@
-const CACHE = "nihongo-kana-v1";
+const CACHE = "nihongo-kana-v2";
 const ASSETS = [
   "./",
   "./index.html",

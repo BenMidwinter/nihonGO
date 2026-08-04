@@ -1,6 +1,24 @@
 (() => {
   const STORAGE_KEY = "kana-drill-session-v1";
 
+  /** Common Hepburn / kunrei aliases → our deck spellings */
+  const ROMAJI_ALIASES = {
+    si: "shi",
+    ti: "chi",
+    tu: "tsu",
+    hu: "fu",
+    zi: "ji",
+    sya: "sha",
+    syu: "shu",
+    syo: "sho",
+    tya: "cha",
+    tyu: "chu",
+    tyo: "cho",
+    zya: "ja",
+    zyu: "ju",
+    zyo: "jo",
+  };
+
   const screens = {
     setup: document.getElementById("screen-setup"),
     play: document.getElementById("screen-play"),
@@ -21,6 +39,9 @@
     prompt: document.getElementById("prompt"),
     scriptHint: document.getElementById("script-hint"),
     choices: document.getElementById("choices"),
+    typeForm: document.getElementById("type-form"),
+    typeInput: document.getElementById("type-input"),
+    check: document.getElementById("btn-check"),
     feedback: document.getElementById("feedback"),
     feedbackVerdict: document.getElementById("feedback-verdict"),
     feedbackDetail: document.getElementById("feedback-detail"),
@@ -97,14 +118,34 @@
     return pool.slice(0, count);
   }
 
+  function normalizeRomaji(value) {
+    const raw = String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "");
+    return ROMAJI_ALIASES[raw] || raw;
+  }
+
+  function normalizeKana(value) {
+    return String(value || "").trim().normalize("NFC");
+  }
+
+  function answersMatch(given, card, mode) {
+    if (mode === "kana-to-romaji") {
+      return normalizeRomaji(given) === normalizeRomaji(card.romaji);
+    }
+    return normalizeKana(given) === normalizeKana(card.char);
+  }
+
   function readSettingsFromForm() {
     const scripts = [...els.form.querySelectorAll('input[name="script"]:checked')].map(
       (el) => el.value
     );
     const scope = els.form.querySelector('input[name="scope"]:checked').value;
     const mode = els.form.querySelector('input[name="mode"]:checked').value;
+    const difficulty = els.form.querySelector('input[name="difficulty"]:checked').value;
     const roundSize = Number(els.form.querySelector('input[name="roundSize"]:checked').value);
-    return { scripts, scope, mode, roundSize };
+    return { scripts, scope, mode, difficulty, roundSize };
   }
 
   function applySettingsToForm(settings) {
@@ -116,6 +157,10 @@
     if (scope) scope.checked = true;
     const mode = els.form.querySelector(`input[name="mode"][value="${settings.mode}"]`);
     if (mode) mode.checked = true;
+    const difficulty = els.form.querySelector(
+      `input[name="difficulty"][value="${settings.difficulty || "choice"}"]`
+    );
+    if (difficulty) difficulty.checked = true;
     const size = els.form.querySelector(`input[name="roundSize"][value="${settings.roundSize}"]`);
     if (size) size.checked = true;
   }
@@ -126,6 +171,11 @@
       .join(" · ");
   }
 
+  function formatRoundMeta(r) {
+    const hard = r.difficulty === "hard" ? " · hard" : "";
+    return `${formatScripts(r.scripts)} · ${r.total} cards${hard}`;
+  }
+
   function renderHistory(target) {
     target.innerHTML = "";
     if (!session.rounds.length) return;
@@ -134,7 +184,7 @@
       const li = document.createElement("li");
       const pct = Math.round((r.correct / r.total) * 100);
       li.innerHTML = `
-        <span>Round ${i + 1} · ${formatScripts(r.scripts)} · ${r.total} cards</span>
+        <span>Round ${i + 1} · ${formatRoundMeta(r)}</span>
         <span class="score">${r.correct}/${r.total} (${pct}%)</span>
       `;
       target.appendChild(li);
@@ -161,7 +211,8 @@
 
   function startRound(settings) {
     const deck = buildDeck(settings);
-    if (deck.length < 4) {
+    const minCards = settings.difficulty === "hard" ? 1 : 4;
+    if (deck.length < minCards) {
       alert("Not enough kana for that selection. Pick at least one script.");
       return;
     }
@@ -194,6 +245,7 @@
     const { cards, index, settings, correct } = round;
     const card = cards[index];
     const mode = settings.mode;
+    const hard = settings.difficulty === "hard";
 
     els.progressLabel.textContent = `${index + 1} / ${cards.length}`;
     els.liveScore.textContent = `${correct} correct`;
@@ -209,21 +261,47 @@
     stage.style.animation = "";
 
     if (mode === "kana-to-romaji") {
-      els.promptLabel.textContent = "Read this kana";
+      els.promptLabel.textContent = hard ? "Type the romaji" : "Read this kana";
       els.prompt.textContent = card.char;
       els.prompt.classList.remove("romaji-prompt");
       els.scriptHint.textContent = card.script;
     } else {
-      els.promptLabel.textContent = "Which kana is this?";
+      els.promptLabel.textContent = hard ? "Type the kana" : "Which kana is this?";
       els.prompt.textContent = card.romaji;
       els.prompt.classList.add("romaji-prompt");
       els.scriptHint.textContent = card.script;
     }
 
-    const distractors = pickDistractors(card, round.cards.length >= 4 ? buildDeck(settings) : round.cards, mode);
+    els.choices.innerHTML = "";
+    els.typeInput.value = "";
+    els.typeInput.disabled = false;
+    els.check.disabled = false;
+
+    if (hard) {
+      els.choices.classList.add("hidden");
+      els.typeForm.classList.remove("hidden");
+      els.typeInput.classList.toggle("kana-input", mode === "romaji-to-kana");
+      els.typeInput.lang = mode === "romaji-to-kana" ? "ja" : "en";
+      els.typeInput.inputMode = mode === "romaji-to-kana" ? "text" : "latin";
+      els.typeInput.placeholder = mode === "romaji-to-kana" ? "かな" : "romaji";
+      els.typeInput.setAttribute(
+        "aria-label",
+        mode === "romaji-to-kana" ? "Type the kana" : "Type the romaji"
+      );
+      requestAnimationFrame(() => els.typeInput.focus());
+      return;
+    }
+
+    els.typeForm.classList.add("hidden");
+    els.choices.classList.remove("hidden");
+
+    const distractors = pickDistractors(
+      card,
+      round.cards.length >= 4 ? buildDeck(settings) : round.cards,
+      mode
+    );
     const options = shuffle([card, ...distractors]);
 
-    els.choices.innerHTML = "";
     options.forEach((opt) => {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -231,12 +309,50 @@
       btn.textContent = mode === "kana-to-romaji" ? opt.romaji : opt.char;
       btn.dataset.romaji = opt.romaji;
       btn.dataset.char = opt.char;
-      btn.addEventListener("click", () => onAnswer(btn, opt));
+      btn.addEventListener("click", () => onChoiceAnswer(btn, opt));
       els.choices.appendChild(btn);
     });
   }
 
-  function onAnswer(button, chosen) {
+  function showVerdict({ isCorrect, card, mode, yourAnswer }) {
+    els.feedback.classList.remove("hidden");
+    if (isCorrect) {
+      round.correct += 1;
+      els.feedback.classList.add("is-correct");
+      els.feedback.classList.remove("is-wrong");
+      els.feedbackVerdict.textContent = "Correct";
+      els.feedbackDetail.innerHTML =
+        mode === "kana-to-romaji"
+          ? `<strong>${card.char}</strong> is <strong>${card.romaji}</strong>`
+          : `<strong>${card.romaji}</strong> is <strong>${card.char}</strong>`;
+    } else {
+      round.misses.push({
+        char: card.char,
+        romaji: card.romaji,
+        script: card.script,
+        given: yourAnswer || "—",
+      });
+      els.feedback.classList.add("is-wrong");
+      els.feedback.classList.remove("is-correct");
+      els.feedbackVerdict.textContent = "Not quite";
+      const givenHtml = yourAnswer
+        ? `You answered <strong>${yourAnswer}</strong>. `
+        : "";
+      els.feedbackDetail.innerHTML =
+        mode === "kana-to-romaji"
+          ? `${givenHtml}<strong>${card.char}</strong> is <strong>${card.romaji}</strong>.`
+          : `${givenHtml}<strong>${card.romaji}</strong> is <strong>${card.char}</strong>.`;
+    }
+
+    els.liveScore.textContent = `${round.correct} correct`;
+    els.progressFill.style.width = `${((round.index + 1) / round.cards.length) * 100}%`;
+
+    const isLast = round.index >= round.cards.length - 1;
+    els.next.textContent = isLast ? "See results" : "Next";
+    els.next.focus();
+  }
+
+  function onChoiceAnswer(button, chosen) {
     if (!round || round.answered) return;
     round.answered = true;
 
@@ -259,37 +375,26 @@
       else btn.classList.add("dim");
     });
 
-    els.feedback.classList.remove("hidden");
-    if (isCorrect) {
-      round.correct += 1;
-      els.feedback.classList.add("is-correct");
-      els.feedbackVerdict.textContent = "Correct";
-      els.feedbackDetail.innerHTML =
-        mode === "kana-to-romaji"
-          ? `<strong>${card.char}</strong> is <strong>${card.romaji}</strong>`
-          : `<strong>${card.romaji}</strong> is <strong>${card.char}</strong>`;
-    } else {
-      const yourAnswer = mode === "kana-to-romaji" ? chosen.romaji : chosen.char;
-      round.misses.push({
-        char: card.char,
-        romaji: card.romaji,
-        script: card.script,
-        given: yourAnswer,
-      });
-      els.feedback.classList.add("is-wrong");
-      els.feedbackVerdict.textContent = "Not quite";
-      els.feedbackDetail.innerHTML =
-        mode === "kana-to-romaji"
-          ? `You chose <strong>${yourAnswer}</strong>. <strong>${card.char}</strong> is <strong>${card.romaji}</strong>.`
-          : `You chose <strong>${yourAnswer}</strong>. <strong>${card.romaji}</strong> is <strong>${card.char}</strong>.`;
+    const yourAnswer = mode === "kana-to-romaji" ? chosen.romaji : chosen.char;
+    showVerdict({ isCorrect, card, mode, yourAnswer });
+  }
+
+  function onTypedAnswer(raw) {
+    if (!round || round.answered) return;
+    const given = String(raw || "").trim();
+    if (!given) {
+      els.typeInput.focus();
+      return;
     }
 
-    els.liveScore.textContent = `${round.correct} correct`;
-    els.progressFill.style.width = `${((round.index + 1) / round.cards.length) * 100}%`;
+    round.answered = true;
+    const card = round.cards[round.index];
+    const mode = round.settings.mode;
+    const isCorrect = answersMatch(given, card, mode);
 
-    const isLast = round.index >= round.cards.length - 1;
-    els.next.textContent = isLast ? "See results" : "Next";
-    els.next.focus();
+    els.typeInput.disabled = true;
+    els.check.disabled = true;
+    showVerdict({ isCorrect, card, mode, yourAnswer: given });
   }
 
   function finishRound({ abandoned = false } = {}) {
@@ -314,6 +419,7 @@
       scripts: round.settings.scripts,
       scope: round.settings.scope,
       mode: round.settings.mode,
+      difficulty: round.settings.difficulty || "choice",
       misses: round.misses,
       abandoned,
       at: new Date().toISOString(),
@@ -325,16 +431,25 @@
     els.resultsTitle.textContent = abandoned ? "Round ended early" : "Round complete";
     els.resultsScore.textContent = `${record.correct} / ${record.total}`;
     const pct = Math.round((record.correct / record.total) * 100);
-    els.resultsPct.textContent = `${pct}% · ${formatScripts(record.scripts)}`;
+    const hardLabel = record.difficulty === "hard" ? " · hard" : "";
+    els.resultsPct.textContent = `${pct}% · ${formatScripts(record.scripts)}${hardLabel}`;
 
     if (record.misses.length) {
       els.missedList.classList.remove("hidden");
       els.missedItems.innerHTML = "";
       record.misses.forEach((m) => {
         const li = document.createElement("li");
+        const showGiven =
+          record.mode === "kana-to-romaji" || record.difficulty === "hard"
+            ? m.given
+            : m.given;
+        const right =
+          record.mode === "romaji-to-kana" && record.difficulty === "hard"
+            ? m.char
+            : m.romaji;
         li.innerHTML = `
           <span class="kana">${m.char}</span>
-          <span><span class="fix">${m.given}</span><span class="right">${m.romaji}</span></span>
+          <span><span class="wrong">${showGiven}</span><span class="right">${right}</span></span>
         `;
         els.missedItems.appendChild(li);
       });
@@ -363,6 +478,11 @@
     e.preventDefault();
     const settings = readSettingsFromForm();
     startRound(settings);
+  });
+
+  els.typeForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    onTypedAnswer(els.typeInput.value);
   });
 
   els.next.addEventListener("click", nextCard);
