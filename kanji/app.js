@@ -172,7 +172,6 @@
     const isRevision = mode === "revision";
     els.roundSizeLegend.textContent = isRevision ? "Cards to review" : "Cards per round";
     els.startBtn.textContent = isRevision ? "Start revision" : "Start round";
-    els.liveScore.parentElement.classList.toggle("hidden", isRevision);
   }
 
   function formatRoundMeta(r) {
