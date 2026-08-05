@@ -427,9 +427,8 @@
           </span>
         `;
 
-        const toggle = (event) => {
-          event.preventDefault();
-          const flipped = btn.classList.toggle("is-flipped");
+        const setFlipped = (flipped) => {
+          btn.classList.toggle("is-flipped", flipped);
           const front = btn.querySelector(".flip-front");
           const back = btn.querySelector(".flip-back");
           if (front) front.setAttribute("aria-hidden", flipped ? "true" : "false");
@@ -442,15 +441,8 @@
           );
         };
 
-        // pointerup is more reliable than click on some mobile browsers
-        btn.addEventListener("pointerup", (event) => {
-          if (event.pointerType === "mouse" && event.button !== 0) return;
-          toggle(event);
-        });
-        btn.addEventListener("keydown", (event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            toggle(event);
-          }
+        btn.addEventListener("click", () => {
+          setFlipped(!btn.classList.contains("is-flipped"));
         });
         grid.appendChild(btn);
       }
