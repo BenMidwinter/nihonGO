@@ -12,6 +12,7 @@ Add that URL to your Home Screen for quick access on your phone.
 |------|--------|
 | [`/`](./index.html) | Home hub |
 | [`/kana/`](./kana/) | Hiragana & katakana flashcards |
+| [`/kanji/`](./kanji/) | Travel & daily-life kanji (test + revision) |
 | [`/phrases/`](./phrases/) | Placeholder for common phrases |
 
 ## Local preview

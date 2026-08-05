@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a2e28" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="nihonGO! Kanji" />
+  <title>Kanji Drill — nihonGO!</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../shared.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="atmosphere" aria-hidden="true"></div>
+
+  <main id="app">
+    <section id="screen-setup" class="screen active" aria-label="Setup">
+      <a class="home-link" href="../">← nihonGO!</a>
+      <header class="brand-block">
+        <p class="brand-eyebrow"><span class="brand-nihon">nihon</span><span class="brand-go">GO!</span></p>
+        <p class="brand">漢字ドリル</p>
+        <h1 class="brand-latin">Kanji Drill</h1>
+        <p class="tagline">Travel &amp; daily-life kanji — test yourself or flip through revision cards.</p>
+      </header>
+
+      <form id="setup-form" class="setup">
+        <fieldset>
+          <legend>Mode</legend>
+          <label class="radio"><input type="radio" name="mode" value="kanji-to-reading" checked /> See kanji → pick reading</label>
+          <label class="radio"><input type="radio" name="mode" value="kanji-to-meaning" /> See kanji → pick meaning</label>
+          <label class="radio"><input type="radio" name="mode" value="reading-to-kanji" /> See reading → pick kanji</label>
+          <label class="radio"><input type="radio" name="mode" value="meaning-to-kanji" /> See meaning → pick kanji</label>
+          <label class="radio"><input type="radio" name="mode" value="revision" /> Revision — study cards (no test)</label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Topics</legend>
+          <div id="category-list" class="category-list"></div>
+        </fieldset>
+
+        <fieldset id="round-size-field">
+          <legend id="round-size-legend">Cards per round</legend>
+          <div class="pill-row" role="group">
+            <label class="pill"><input type="radio" name="roundSize" value="10" checked /> 10</label>
+            <label class="pill"><input type="radio" name="roundSize" value="20" /> 20</label>
+            <label class="pill"><input type="radio" name="roundSize" value="all" /> All</label>
+          </div>
+        </fieldset>
+
+        <button type="submit" class="btn primary" id="btn-start">Start round</button>
+      </form>
+
+      <aside id="session-panel" class="session-panel hidden">
+        <h2>This session</h2>
+        <ul id="round-history" class="round-history"></ul>
+        <p id="session-summary" class="session-summary"></p>
+        <button type="button" id="btn-clear-session" class="btn ghost">Clear session</button>
+      </aside>
+    </section>
+
+    <section id="screen-play" class="screen" aria-label="Flashcards" hidden>
+      <div class="play-top">
+        <button type="button" id="btn-quit" class="btn ghost small">End round</button>
+        <div class="progress-meta">
+          <span id="progress-label">1 / 10</span>
+          <span id="live-score">0 correct</span>
+        </div>
+      </div>
+      <div class="progress-bar" aria-hidden="true"><div id="progress-fill"></div></div>
+
+      <div class="card-stage">
+        <p id="prompt-label" class="prompt-label">What is this kanji?</p>
+        <div id="prompt" class="prompt kanji-prompt" aria-live="polite">出</div>
+        <p id="prompt-hint" class="prompt-hint">Transit</p>
+      </div>
+
+      <div id="choices" class="choices" role="group" aria-label="Answer choices"></div>
+
+      <div id="feedback" class="feedback hidden" aria-live="assertive">
+        <p id="feedback-verdict" class="feedback-verdict"></p>
+        <p id="feedback-detail" class="feedback-detail"></p>
+        <button type="button" id="btn-next" class="btn primary">Next</button>
+      </div>
+    </section>
+
+    <section id="screen-revision" class="screen" aria-label="Revision cards" hidden>
+      <div class="play-top">
+        <button type="button" id="btn-rev-quit" class="btn ghost small">End revision</button>
+        <div class="progress-meta">
+          <span id="rev-progress-label">1 / 10</span>
+        </div>
+      </div>
+      <div class="progress-bar" aria-hidden="true"><div id="rev-progress-fill"></div></div>
+
+      <article class="revision-card">
+        <p class="revision-category" id="rev-category">Transit</p>
+        <div class="revision-kanji" id="rev-kanji" aria-live="polite">出</div>
+        <dl class="revision-details">
+          <div>
+            <dt>Reading</dt>
+            <dd id="rev-reading">で / しゅつ</dd>
+          </div>
+          <div>
+            <dt>Meaning</dt>
+            <dd id="rev-meaning">Exit / Depart</dd>
+          </div>
+          <div>
+            <dt>Example</dt>
+            <dd id="rev-example">出口 (Exit)</dd>
+          </div>
+        </dl>
+      </article>
+
+      <div class="revision-nav">
+        <button type="button" id="btn-rev-prev" class="btn ghost">Previous</button>
+        <button type="button" id="btn-rev-next" class="btn primary">Next</button>
+      </div>
+    </section>
+
+    <section id="screen-results" class="screen" aria-label="Round results" hidden>
+      <a class="home-link" href="../">← nihonGO!</a>
+      <header class="results-header">
+        <p class="brand-sm"><span class="brand-nihon">nihon</span><span class="brand-go">GO!</span> · 漢字ドリル</p>
+        <h2 id="results-title">Round complete</h2>
+        <p id="results-score" class="results-score">0 / 10</p>
+        <p id="results-pct" class="results-pct"></p>
+      </header>
+
+      <div id="missed-list" class="missed-list hidden">
+        <h3>Review misses</h3>
+        <ul id="missed-items"></ul>
+      </div>
+
+      <div class="results-actions">
+        <button type="button" id="btn-again" class="btn primary">Play another round</button>
+        <button type="button" id="btn-home" class="btn ghost">Back to setup</button>
+      </div>
+
+      <aside class="session-panel">
+        <h2>Session rounds</h2>
+        <ul id="results-history" class="round-history"></ul>
+      </aside>
+    </section>
+  </main>
+
+  <script src="kanji.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
