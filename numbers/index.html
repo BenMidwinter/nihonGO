@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a2e28" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Numbers — nihonGO!</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../shared.css" />
+  <link rel="stylesheet" href="../shared/topic-module.css" />
+</head>
+<body>
+  <div class="atmosphere" aria-hidden="true"></div>
+  <main id="app">
+    <section id="screen-home" class="screen active" aria-label="Home">
+      <a class="home-link" href="../">← nihonGO!</a>
+      <header class="brand-block">
+        <p class="brand-eyebrow"><span class="brand-nihon">nihon</span><span class="brand-go">GO!</span></p>
+        <p class="brand">数字</p>
+        <h1 class="brand-latin">Numbers</h1>
+        <p class="tagline">Count, read, and combine Japanese numbers.</p>
+      </header>
+      <nav id="tab-nav" class="tab-nav" aria-label="Sections">
+        <button type="button" class="tab-btn active" data-tab="rules">Rules</button>
+        <button type="button" class="tab-btn" data-tab="drill">Drill</button>
+        <button type="button" class="tab-btn" data-tab="examples">Examples</button>
+      </nav>
+      <div class="panel">
+        <div id="rules-mount"></div>
+        <div id="drill-panel" class="hidden">
+          <form id="setup-form">
+            <fieldset>
+              <legend>Mode</legend>
+              <div id="mode-list"></div>
+            </fieldset>
+            <fieldset>
+              <legend>Topics</legend>
+              <div id="category-list" class="category-list"></div>
+            </fieldset>
+            <fieldset>
+              <legend>Cards per round</legend>
+              <div class="pill-row" role="group">
+                <label class="pill"><input type="radio" name="roundSize" value="10" checked /> 10</label>
+                <label class="pill"><input type="radio" name="roundSize" value="20" /> 20</label>
+                <label class="pill"><input type="radio" name="roundSize" value="all" /> All</label>
+              </div>
+            </fieldset>
+            <button type="submit" class="btn primary" id="btn-start">Start round</button>
+          </form>
+        </div>
+        <p id="examples-hint" class="hidden" style="margin-top:1rem;font-size:0.9rem;color:var(--ink-soft)">Tap the Examples tab to open longer phrases in context.</p>
+      </div>
+      <aside id="session-panel" class="session-panel hidden">
+        <h2>This session</h2>
+        <ul id="round-history" class="round-history"></ul>
+        <p id="session-summary" class="session-summary"></p>
+        <button type="button" id="btn-clear-session" class="btn ghost">Clear session</button>
+      </aside>
+    </section>
+    <section id="screen-play" class="screen" aria-label="Drill" hidden>
+      <div class="play-top">
+        <button type="button" id="btn-quit" class="btn ghost small">End round</button>
+        <div class="progress-meta"><span id="progress-label">1 / 10</span><span id="live-score">0 correct</span></div>
+      </div>
+      <div class="progress-bar" aria-hidden="true"><div id="progress-fill"></div></div>
+      <div class="card-stage">
+        <p id="prompt-label" class="prompt-label">Prompt</p>
+        <div id="prompt" class="prompt" aria-live="polite"></div>
+        <p id="prompt-hint" class="prompt-hint"></p>
+      </div>
+      <div id="choices" class="choices" role="group" aria-label="Answer choices"></div>
+      <div id="feedback" class="feedback hidden" aria-live="assertive">
+        <p id="feedback-verdict" class="feedback-verdict"></p>
+        <p id="feedback-detail" class="feedback-detail"></p>
+        <button type="button" id="btn-next" class="btn primary">Next</button>
+      </div>
+    </section>
+    <section id="screen-revision" class="screen" aria-label="Revision" hidden>
+      <div class="play-top">
+        <button type="button" id="btn-rev-quit" class="btn ghost small">End revision</button>
+        <div class="progress-meta"><span id="rev-progress-label">1 / 10</span></div>
+      </div>
+      <div class="progress-bar" aria-hidden="true"><div id="rev-progress-fill"></div></div>
+      <div id="rev-mount"></div>
+      <div class="card-nav">
+        <button type="button" id="btn-rev-prev" class="btn ghost">Previous</button>
+        <button type="button" id="btn-rev-next" class="btn primary">Next</button>
+      </div>
+    </section>
+    <section id="screen-examples" class="screen" aria-label="Examples" hidden>
+      <div class="play-top">
+        <button type="button" id="btn-ex-quit" class="btn ghost small">Back</button>
+        <div class="progress-meta"><span id="ex-progress-label">1 / 5</span></div>
+      </div>
+      <div class="progress-bar" aria-hidden="true"><div id="ex-progress-fill"></div></div>
+      <div id="ex-mount"></div>
+      <div class="card-nav">
+        <button type="button" id="btn-ex-prev" class="btn ghost">Previous</button>
+        <button type="button" id="btn-ex-next" class="btn primary">Next</button>
+      </div>
+    </section>
+    <section id="screen-results" class="screen" aria-label="Results" hidden>
+      <a class="home-link" href="../">← nihonGO!</a>
+      <header class="results-header">
+        <p class="brand-sm"><span class="brand-nihon">nihon</span><span class="brand-go">GO!</span> · 数字</p>
+        <h2 id="results-title">Round complete</h2>
+        <p id="results-score" class="results-score">0 / 10</p>
+        <p id="results-pct" class="results-pct"></p>
+      </header>
+      <div id="missed-list" class="missed-list hidden"><h3>Review misses</h3><ul id="missed-items"></ul></div>
+      <div class="results-actions">
+        <button type="button" id="btn-again" class="btn primary">Play another round</button>
+        <button type="button" id="btn-home" class="btn ghost">Back to menu</button>
+      </div>
+      <aside class="session-panel"><h2>Session rounds</h2><ul id="results-history" class="round-history"></ul></aside>
+    </section>
+  </main>
+  <script src="../shared/topic-module.js"></script>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

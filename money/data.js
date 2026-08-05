@@ -576,7 +576,7 @@ const TOPIC = {
       promptLabel: "What does this mean?",
       prompt: "japanese",
       answer: "english",
-      promptStyle: "text",
+      promptStyle: "jp",
     },
     {
       value: "english-to-japanese",

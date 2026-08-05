@@ -13,6 +13,9 @@ Add that URL to your Home Screen for quick access on your phone.
 | [`/`](./index.html) | Home hub |
 | [`/kana/`](./kana/) | Hiragana & katakana flashcards |
 | [`/kanji/`](./kanji/) | Travel & daily-life kanji (test + revision) |
+| [`/numbers/`](./numbers/) | Counting rules, drills, and examples |
+| [`/time/`](./time/) | Time & calendar rules, drills, and examples |
+| [`/money/`](./money/) | Money & shopping rules, drills, and examples |
 | [`/phrases/`](./phrases/) | Placeholder for common phrases |
 
 ## Local preview
