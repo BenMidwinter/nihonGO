@@ -419,21 +419,38 @@
         );
         btn.innerHTML = `
           <span class="flip-inner">
-            <span class="flip-face flip-front">${card.kanji}</span>
-            <span class="flip-face flip-back">
+            <span class="flip-face flip-front" aria-hidden="false">${card.kanji}</span>
+            <span class="flip-face flip-back" aria-hidden="true">
               <span class="flip-back-reading">${card.reading}</span>
               <span class="flip-back-meaning">${card.meaning}</span>
             </span>
           </span>
         `;
-        btn.addEventListener("click", () => {
+
+        const toggle = (event) => {
+          event.preventDefault();
           const flipped = btn.classList.toggle("is-flipped");
+          const front = btn.querySelector(".flip-front");
+          const back = btn.querySelector(".flip-back");
+          if (front) front.setAttribute("aria-hidden", flipped ? "true" : "false");
+          if (back) back.setAttribute("aria-hidden", flipped ? "false" : "true");
           btn.setAttribute(
             "aria-label",
             flipped
               ? `${card.kanji}: ${card.reading}. ${card.meaning}. Tap to hide.`
               : `${card.kanji}. Tap to reveal reading and meaning.`
           );
+        };
+
+        // pointerup is more reliable than click on some mobile browsers
+        btn.addEventListener("pointerup", (event) => {
+          if (event.pointerType === "mouse" && event.button !== 0) return;
+          toggle(event);
+        });
+        btn.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            toggle(event);
+          }
         });
         grid.appendChild(btn);
       }
