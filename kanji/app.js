@@ -6,6 +6,7 @@
     "kanji-to-meaning": "Kanji → meaning",
     "reading-to-kanji": "Reading → kanji",
     "meaning-to-kanji": "Meaning → kanji",
+    "flip-list": "Flip list",
     revision: "Revision",
   };
 
@@ -13,6 +14,7 @@
     setup: document.getElementById("screen-setup"),
     play: document.getElementById("screen-play"),
     revision: document.getElementById("screen-revision"),
+    flipList: document.getElementById("screen-flip-list"),
     results: document.getElementById("screen-results"),
   };
 
@@ -48,6 +50,9 @@
     revExample: document.getElementById("rev-example"),
     revPrev: document.getElementById("btn-rev-prev"),
     revNext: document.getElementById("btn-rev-next"),
+    flipQuit: document.getElementById("btn-flip-quit"),
+    flipCountLabel: document.getElementById("flip-count-label"),
+    flipList: document.getElementById("flip-list"),
     resultsTitle: document.getElementById("results-title"),
     resultsScore: document.getElementById("results-score"),
     resultsPct: document.getElementById("results-pct"),
@@ -170,8 +175,13 @@
 
   function updateSetupForMode(mode) {
     const isRevision = mode === "revision";
+    const isFlipList = mode === "flip-list";
+    const hideRoundSize = isFlipList;
+    els.roundSizeField.classList.toggle("hidden", hideRoundSize);
     els.roundSizeLegend.textContent = isRevision ? "Cards to review" : "Cards per round";
-    els.startBtn.textContent = isRevision ? "Start revision" : "Start round";
+    if (isFlipList) els.startBtn.textContent = "Open flip list";
+    else if (isRevision) els.startBtn.textContent = "Start revision";
+    else els.startBtn.textContent = "Start round";
   }
 
   function formatRoundMeta(r) {
@@ -228,6 +238,14 @@
 
     session.settings = settings;
     saveSession();
+
+    if (settings.mode === "flip-list") {
+      // Keep category order for a readable long list
+      const cards = deck.slice();
+      showScreen("flipList");
+      renderFlipList(cards);
+      return;
+    }
 
     const size =
       settings.roundSize === "all"
@@ -372,6 +390,58 @@
     els.next.focus();
   }
 
+  function renderFlipList(cards) {
+    els.flipCountLabel.textContent = `${cards.length} kanji`;
+    els.flipList.innerHTML = "";
+
+    const byCategory = new Map();
+    for (const card of cards) {
+      if (!byCategory.has(card.category)) byCategory.set(card.category, []);
+      byCategory.get(card.category).push(card);
+    }
+
+    for (const [category, group] of byCategory) {
+      const title = document.createElement("h2");
+      title.className = "flip-group-title";
+      title.textContent = category;
+      els.flipList.appendChild(title);
+
+      const grid = document.createElement("div");
+      grid.className = "flip-grid";
+
+      for (const card of group) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "flip-tile";
+        btn.setAttribute(
+          "aria-label",
+          `${card.kanji}. Tap to reveal reading and meaning.`
+        );
+        btn.innerHTML = `
+          <span class="flip-inner">
+            <span class="flip-face flip-front">${card.kanji}</span>
+            <span class="flip-face flip-back">
+              <span class="flip-back-reading">${card.reading}</span>
+              <span class="flip-back-meaning">${card.meaning}</span>
+            </span>
+          </span>
+        `;
+        btn.addEventListener("click", () => {
+          const flipped = btn.classList.toggle("is-flipped");
+          btn.setAttribute(
+            "aria-label",
+            flipped
+              ? `${card.kanji}: ${card.reading}. ${card.meaning}. Tap to hide.`
+              : `${card.kanji}. Tap to reveal reading and meaning.`
+          );
+        });
+        grid.appendChild(btn);
+      }
+
+      els.flipList.appendChild(grid);
+    }
+  }
+
   function renderRevisionCard() {
     const { cards, index } = revision;
     const card = cards[index];
@@ -496,6 +566,10 @@
   els.revPrev.addEventListener("click", prevRevisionCard);
   els.revQuit.addEventListener("click", () => {
     revision = null;
+    showScreen("setup");
+  });
+
+  els.flipQuit.addEventListener("click", () => {
     showScreen("setup");
   });
 

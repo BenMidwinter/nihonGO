@@ -34,7 +34,8 @@
           <label class="radio"><input type="radio" name="mode" value="kanji-to-meaning" /> See kanji → pick meaning</label>
           <label class="radio"><input type="radio" name="mode" value="reading-to-kanji" /> See reading → pick kanji</label>
           <label class="radio"><input type="radio" name="mode" value="meaning-to-kanji" /> See meaning → pick kanji</label>
-          <label class="radio"><input type="radio" name="mode" value="revision" /> Revision — study cards (no test)</label>
+          <label class="radio"><input type="radio" name="mode" value="flip-list" /> Flip list — tap kanji to reveal</label>
+          <label class="radio"><input type="radio" name="mode" value="revision" /> Revision — one card at a time</label>
         </fieldset>
 
         <fieldset>
@@ -85,6 +86,17 @@
         <p id="feedback-detail" class="feedback-detail"></p>
         <button type="button" id="btn-next" class="btn primary">Next</button>
       </div>
+    </section>
+
+    <section id="screen-flip-list" class="screen" aria-label="Kanji flip list" hidden>
+      <div class="play-top">
+        <button type="button" id="btn-flip-quit" class="btn ghost small">Back</button>
+        <div class="progress-meta">
+          <span id="flip-count-label">0 kanji</span>
+        </div>
+      </div>
+      <p class="flip-hint">Tap a kanji to flip — reading and meaning on the back.</p>
+      <div id="flip-list" class="flip-list"></div>
     </section>
 
     <section id="screen-revision" class="screen" aria-label="Revision cards" hidden>
